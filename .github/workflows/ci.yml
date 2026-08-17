@@ -1,0 +1,117 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # Necessário para o lint-imports e o pytest resolverem `import app`.
+  PYTHONPATH: .
+  QT_QPA_PLATFORM: offscreen
+  PYQTGRAPH_QT_LIB: PySide6
+
+jobs:
+  # Gate: plataforma de desenvolvimento.
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-groups
+
+      # Afere o interpretador: SQLite >= 3.37 e perf_counter <= 1 us.
+      - name: sanidade de relogio e sqlite
+        run: |
+          uv run python -c "import sqlite3, sys, time; iv = sqlite3.sqlite_version_info; ci = time.get_clock_info('perf_counter'); print('sqlite', sqlite3.sqlite_version, ci); sys.exit(0 if iv >= (3,37,0) and ci.resolution <= 1e-6 and ci.monotonic else 1)"
+
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy app
+      - run: uv run lint-imports
+      - run: uv run pytest --cov
+
+  # Guarda de portabilidade: detecta colisões de caso, invisíveis no Windows.
+  portability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # O pacote glib mudou de nome no Ubuntu 24.04; o fallback cobre 22.04.
+      - name: dependencias de sistema do Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libdbus-1-3 libxcb-cursor0
+          sudo apt-get install -y libglib2.0-0t64 || sudo apt-get install -y libglib2.0-0
+
+      - run: uv sync --all-groups
+      - name: sanidade de relogio e sqlite
+        run: |
+          uv run python -c "import sqlite3, sys, time; iv = sqlite3.sqlite_version_info; ci = time.get_clock_info('perf_counter'); print('sqlite', sqlite3.sqlite_version, ci); sys.exit(0 if iv >= (3,37,0) and ci.resolution <= 1e-6 and ci.monotonic else 1)"
+      - run: uv run ruff check .
+      - run: uv run mypy app
+      - run: uv run lint-imports
+      - run: uv run pytest
+
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-groups
+
+      - name: pyinstaller onedir
+        run: |
+          uv run pyinstaller --onedir --noconfirm --name sortie `
+            --exclude-module PyQt5 --exclude-module PyQt6 --exclude-module PySide2 `
+            --exclude-module psutil `
+            main.py
+
+      # Limpa QT_QPA_PLATFORM para carregar o plugin real e conferir que foi coletado.
+      - name: selftest com plugin de plataforma real
+        env:
+          QT_QPA_PLATFORM: ""
+          QT_DEBUG_PLUGINS: "1"
+        run: |
+          $p = Start-Process -FilePath dist\sortie\sortie.exe -ArgumentList '--selftest' `
+                 -Wait -PassThru -RedirectStandardError selftest.err -RedirectStandardOutput selftest.out
+          Get-Content selftest.err, selftest.out
+          if ($p.ExitCode -ne 0) { throw "selftest saiu $($p.ExitCode)" }
+          if (Select-String -Path selftest.err -Pattern 'Could not load the Qt platform plugin' -Quiet) {
+            throw "plugin de plataforma nao foi coletado"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sortie-windows
+          path: dist/sortie/
+
+  # Build apenas: o artefato Linux não é validado nem anexado a Release.
+  package-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: dependencias de sistema do Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libdbus-1-3 libxcb-cursor0
+          sudo apt-get install -y libglib2.0-0t64 || sudo apt-get install -y libglib2.0-0
+      - run: uv sync --all-groups
+      - run: |
+          uv run pyinstaller --onedir --noconfirm --name sortie \
+            --exclude-module PyQt5 --exclude-module PyQt6 --exclude-module PySide2 \
+            --exclude-module psutil \
+            main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sortie-linux-UNVALIDATED
+          path: dist/sortie/
+          retention-days: 14

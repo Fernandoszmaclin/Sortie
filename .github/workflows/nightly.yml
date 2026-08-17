@@ -1,0 +1,36 @@
+name: nightly
+
+# Roda os testes marcados `soak`, excluídos do ci.yml por duração.
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+env:
+  PYTHONPATH: .
+  QT_QPA_PLATFORM: offscreen
+  PYQTGRAPH_QT_LIB: PySide6
+
+jobs:
+  soak:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --all-groups
+
+      - name: soak
+        run: uv run pytest -m soak --durations=0
+
+      # Publica MB/hora, pico de RSS e p95 de latência no resumo do job.
+      - name: publicar medicoes
+        if: always()
+        run: |
+          if (Test-Path soak-metrics.md) {
+            Get-Content soak-metrics.md >> $env:GITHUB_STEP_SUMMARY
+          } else {
+            "Nenhuma metrica produzida (ainda nao ha testes marcados 'soak')." >> $env:GITHUB_STEP_SUMMARY
+          }
