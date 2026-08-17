@@ -73,17 +73,34 @@ jobs:
             --exclude-module psutil `
             main.py
 
-      # Limpa QT_QPA_PLATFORM para carregar o plugin real e conferir que foi coletado.
+      # O plugin de plataforma é carregado por nome em runtime, então o PyInstaller
+      # não o descobre lendo imports. Busca recursiva: o layout de `_internal/` muda
+      # entre versões do PyInstaller e um caminho fixo quebraria no bump.
+      - name: plugin de plataforma foi coletado
+        run: |
+          if (-not (Get-ChildItem -Recurse dist\sortie -Filter qwindows.dll)) {
+            throw "qwindows.dll ausente do pacote"
+          }
+
+      # Sobrescreve o offscreen do workflow, que nunca carregaria qwindows.dll.
+      # QT_DEBUG_PLUGINS não pode ser usado aqui: com um qInstallMessageHandler
+      # instalado, o volume de mensagens derruba o processo (0xC0000005).
       - name: selftest com plugin de plataforma real
         env:
-          QT_QPA_PLATFORM: ""
-          QT_DEBUG_PLUGINS: "1"
+          QT_QPA_PLATFORM: windows
         run: |
           $p = Start-Process -FilePath dist\sortie\sortie.exe -ArgumentList '--selftest' `
                  -Wait -PassThru -RedirectStandardError selftest.err -RedirectStandardOutput selftest.out
           Get-Content selftest.err, selftest.out
+
+          # main.py desvia as mensagens do Qt para o log; o stderr fica vazio.
+          # Despejado antes do throw, senão não existe diagnóstico na falha.
+          $log = "$env:LOCALAPPDATA\Sortie\logs\sortie.log"
+          if (Test-Path $log) { Get-Content $log -Tail 50 }
+
           if ($p.ExitCode -ne 0) { throw "selftest saiu $($p.ExitCode)" }
-          if (Select-String -Path selftest.err -Pattern 'Could not load the Qt platform plugin' -Quiet) {
+          if ((Test-Path $log) -and
+              (Select-String -Path $log -Pattern 'no Qt platform plugin could be initialized' -Quiet)) {
             throw "plugin de plataforma nao foi coletado"
           }
 
