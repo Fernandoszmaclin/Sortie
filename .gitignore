@@ -1,0 +1,35 @@
+# Dados de missão — §20. Coordenada de voo real é geolocalização precisa e,
+# associável ao operador, é dado pessoal sob LGPD e GDPR.
+*.db
+*.db-wal
+*.db-shm
+*.tlog
+*.bin
+*.ulg
+exports/
+
+# Exceções: fixtures sintéticas (ADR 0015) e banco de demonstração.
+# Ambos são de origem de simulador, com home público. Ver CONTRIBUTING.md.
+!tests/fixtures/*.tlog
+!tests/fixtures/*.bin
+!tests/fixtures/*.db
+!assets/demo/*.db
+
+# Logs da aplicação
+*.log
+*.crash
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Empacotamento
+build/
+dist/
+*.spec
