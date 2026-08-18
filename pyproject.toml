@@ -89,6 +89,9 @@ ignore = ["S101"]
 
 [tool.mypy]
 python_version        = "3.12"
+# Escopo aqui, e nao na linha do workflow: main.py e a raiz de composicao, e
+# deixar o ponto de entrada fora do verificador contradiz A6 e o ruff.
+files                 = ["app", "main.py"]
 warn_unused_configs   = true
 disallow_untyped_defs = true
 warn_return_any       = true

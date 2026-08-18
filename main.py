@@ -73,10 +73,21 @@ def _install_logging() -> Path:
     ) -> None:
         logging.getLogger("sortie").critical("excecao nao tratada", exc_info=(exc_type, exc, tb))
 
+    def _thread_hook(args: threading.ExceptHookArgs) -> None:
+        """Registra exceção não tratada em thread. `exc_value` pode ser None."""
+        log = logging.getLogger("sortie")
+        if args.exc_value is None:
+            # Sem valor não há traceback: o exc_info viraria a string "NoneType: None"
+            # e a linha CRITICAL chegaria ao log sem nenhum conteúdo diagnóstico.
+            log.critical("excecao em thread sem valor: %s", args.exc_type)
+            return
+        log.critical(
+            "excecao em thread",
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+        )
+
     sys.excepthook = _hook
-    threading.excepthook = lambda a: logging.getLogger("sortie").critical(
-        "excecao em thread", exc_info=(a.exc_type, a.exc_value, a.exc_traceback)
-    )
+    threading.excepthook = _thread_hook
     return logfile
 
 

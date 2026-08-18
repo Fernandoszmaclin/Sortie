@@ -29,7 +29,7 @@ jobs:
 
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy app
+      - run: uv run mypy
       - run: uv run lint-imports
       - run: uv run pytest --cov
 
@@ -55,7 +55,7 @@ jobs:
         run: |
           uv run python -c "import sqlite3, sys, time; iv = sqlite3.sqlite_version_info; ci = time.get_clock_info('perf_counter'); print('sqlite', sqlite3.sqlite_version, ci); sys.exit(0 if iv >= (3,37,0) and ci.resolution <= 1e-6 and ci.monotonic else 1)"
       - run: uv run ruff check .
-      - run: uv run mypy app
+      - run: uv run mypy
       - run: uv run lint-imports
       - run: uv run pytest
 
