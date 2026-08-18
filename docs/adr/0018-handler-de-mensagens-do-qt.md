@@ -69,5 +69,7 @@ existe `except` para isso — e afirma saída zero sob cada gatilho.
 `sortie.log`, onde ela só chega através do handler. Desfazer esta decisão pelo lado errado — removendo o
 handler em vez de guardá-lo — quebra aquela verificação sem quebrar nenhum teste.
 
-**Fica em aberto o defeito upstream.** Reportado ao projeto PYSIDE. A guarda sai quando houver versão
-corrigida e o teste de regressão passar sem ela; não antes, e não por parecer supérflua.
+**Fica em aberto o defeito upstream, e não foi reportado.** Existe um rascunho de relatório e uma
+reprodução mínima de oito linhas; submeter ao projeto PYSIDE está pendente. Enquanto não houver número
+de issue aqui, ninguém consegue verificar se a guarda já pode sair — então ela sai apenas quando houver
+versão corrigida e o teste de regressão passar sem ela.
