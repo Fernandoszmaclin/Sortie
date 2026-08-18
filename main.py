@@ -14,6 +14,23 @@ from types import TracebackType
 
 _CRASH_FH = None
 
+# Variáveis que ligam o log verboso do Qt, mapeadas para os valores que significam
+# desligado. As semânticas divergem e foram medidas: QT_DEBUG_PLUGINS é booleana, as
+# outras duas são valores. Checagem uniforme por presença erra nas três (ADR 0018).
+_QT_VERBOSE_ENV: dict[str, frozenset[str]] = {
+    "QT_DEBUG_PLUGINS": frozenset({"", "0"}),
+    "QT_LOGGING_RULES": frozenset({""}),
+    "QT_LOGGING_CONF": frozenset({""}),
+}
+
+
+def _qt_verbose_env() -> str | None:
+    """Retorna o nome da variável que liga o log verboso do Qt, ou None."""
+    for nome, desligado in _QT_VERBOSE_ENV.items():
+        if os.environ.get(nome, "").strip() not in desligado:
+            return nome
+    return None
+
 
 def _log_dir() -> Path:
     """Retorna o diretório de log do usuário, criando-o se não existir."""
@@ -79,7 +96,12 @@ def main(argv: list[str] | None = None) -> int:
         log.warning("qt: %s", msg)
 
     # Instalado antes do QApplication, que emite avisos de plugin durante a construção.
-    QtCore.qInstallMessageHandler(_qt_message)
+    # Sob log verboso o despacho do callback estoura em 0xC0000005; e quem liga a variável
+    # está pedindo a saída nativa do Qt, então ceder o canal é o correto (ADR 0018).
+    if (verboso := _qt_verbose_env()) is not None:
+        log.info("qt: handler nao instalado, %s ativa (ADR 0018)", verboso)
+    else:
+        QtCore.qInstallMessageHandler(_qt_message)
 
     app = QtWidgets.QApplication(sys.argv[:1])
     app.setOrganizationName("Sortie")
