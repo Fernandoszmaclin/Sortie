@@ -28,6 +28,7 @@ tem de nomeá-lo, senão o par lê como desacordo não resolvido.
 | [0015](0015-fixtures-sinteticas.md) | Fixtures sintéticas como estratégia primária | aceito |
 | [0016](0016-nome-sortie.md) | O produto se chama Sortie | aceito |
 | 0017 | Mapa em pyqtgraph sobre MBTiles raster, não QtLocation | v0.4 |
+| [0018](0018-handler-de-mensagens-do-qt.md) | Handler de mensagens do Qt e a guarda de log verboso | aceito |
 
 Os números 0002-0010 vêm da lista planejada em §22 do documento canônico e são escritos quando a
 decisão correspondente for tomada. Um número reservado e não escrito é dívida visível; um número
